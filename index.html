@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doktersportaal</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; background: #f2f2f2; }
+    header { background: #2c3e50; color: white; padding: 15px; display: flex; justify-content: space-between; }
+    #patients { background: #ecf0f1; padding: 10px; display: flex; overflow-x: auto; gap: 10px; }
+    #patients button { padding: 10px; border: none; border-radius: 4px; background: #bdc3c7; cursor: pointer; }
+    #patients .selected { background: #2980b9; color: white; }
+    main { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+    section { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    input, textarea, button, select { width: 100%; margin-top: 10px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+    button { background: #3498db; color: white; border: none; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+let loggedIn = localStorage.getItem("docLogin") === "true";
+let patients = JSON.parse(localStorage.getItem("patients") || "[]");
+let selected = 0;
+
+function save() {
+  localStorage.setItem("patients", JSON.stringify(patients));
+}
+
+function renderLogin() {
+  document.getElementById("app").innerHTML = `
+    <main style="max-width:400px;margin:100px auto;text-align:center">
+      <h2>Inloggen Dokter</h2>
+      <input type="password" id="pwd" placeholder="Wachtwoord">
+      <button onclick="login()">Login</button>
+    </main>`;
+}
+
+function login() {
+  if (document.getElementById("pwd").value === "dokter") {
+    localStorage.setItem("docLogin", "true");
+    loggedIn = true;
+    renderApp();
+  } else {
+    alert("Verkeerd wachtwoord");
+  }
+}
+
+function logout() {
+  localStorage.setItem("docLogin", "false");
+  location.reload();
+}
+
+function renderApp() {
+  if (!patients[selected]) patients[selected] = { name: "Nieuw", notes: "", meds: [], appts: [] };
+  const p = patients[selected];
+  document.getElementById("app").innerHTML = `
+    <header>
+      <div>Doktersportaal</div>
+      <button onclick="logout()">Uitloggen</button>
+    </header>
+    <div id="patients">
+      <button onclick="addPatient()">+ Patiënt</button>
+      ${patients.map((pt, i) => `<button class="${i === selected ? 'selected' : ''}" onclick="select(${i})">${pt.name}</button>`).join("")}
+    </div>
+    <main>
+      <section>
+        <h3>Patiëntgegevens: ${p.name}</h3>
+        <input value="${p.name}" onchange="patients[${selected}].name=this.value; save(); renderApp();">
+      </section>
+
+      <section>
+        <h3>Medische Notities</h3>
+        <textarea rows="6" onchange="patients[${selected}].notes=this.value; save();">${p.notes}</textarea>
+      </section>
+
+      <section>
+        <h3>Medicatie</h3>
+        <ul>${p.meds.map((m, i) => `<li>${m} <button onclick="removeMed(${i})">X</button></li>`).join("")}</ul>
+        <input id="newMed" placeholder="Nieuwe medicatie">
+        <button onclick="addMed()">Toevoegen</button>
+      </section>
+
+      <section>
+        <h3>Afspraken</h3>
+        <ul>${p.appts.map((a, i) => `<li>${a.date} - ${a.desc} <button onclick="removeAppt(${i})">X</button></li>`).join("")}</ul>
+        <input id="apptDate" type="datetime-local">
+        <input id="apptDesc" placeholder="Beschrijving">
+        <button onclick="addAppt()">Toevoegen</button>
+      </section>
+    </main>`;
+}
+
+function select(i) {
+  selected = i;
+  renderApp();
+}
+
+function addPatient() {
+  const naam = prompt("Naam van de patiënt:");
+  if (naam) {
+    patients.push({ name: naam, notes: "", meds: [], appts: [] });
+    selected = patients.length - 1;
+    save();
+    renderApp();
+  }
+}
+
+function addMed() {
+  const m = document.getElementById("newMed").value.trim();
+  if (m) {
+    patients[selected].meds.push(m);
+    save();
+    renderApp();
+  }
+}
+
+function removeMed(i) {
+  patients[selected].meds.splice(i, 1);
+  save();
+  renderApp();
+}
+
+function addAppt() {
+  const date = document.getElementById("apptDate").value;
+  const desc = document.getElementById("apptDesc").value.trim();
+  if (date && desc) {
+    patients[selected].appts.push({ date, desc });
+    save();
+    renderApp();
+  }
+}
+
+function removeAppt(i) {
+  patients[selected].appts.splice(i, 1);
+  save();
+  renderApp();
+}
+
+loggedIn ? renderApp() : renderLogin();
+</script>
+</body>
+</html>
